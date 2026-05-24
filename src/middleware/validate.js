@@ -10,7 +10,7 @@ const validate = (schema) => (req, res, next) => {
     return next(error);
   }
 
-  req.body = value;
+  req.validated = value;
   next();
 };
 

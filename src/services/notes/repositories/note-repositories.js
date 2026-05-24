@@ -31,7 +31,7 @@ class NoteRepositories {
 
   async getNoteById(id) {
     const query = {
-      text: "SELECT * FROM notes WHERE id = $1",
+      text: "SELECT id, title, body, tags, created_at, updated_at FROM notes WHERE id = $1",
       values: [id],
     };
 
@@ -43,7 +43,7 @@ class NoteRepositories {
     const updatedAt = new Date().toISOString();
 
     const query = {
-      text: "UPDATE notes SET title = $1, body = $2, tags = $3, updated_at = $4 WHERE id = $5 RETURNING id",
+      text: "UPDATE notes SET title = $1, body = $2, tags = $3, updated_at = $4 WHERE id = $5 RETURNING id, title, body, tags, created_at, updated_at",
       values: [title, body, tags, updatedAt, id],
     };
 
@@ -64,4 +64,4 @@ class NoteRepositories {
   }
 }
 
-export default NoteRepositories;
+export default new NoteRepositories();
