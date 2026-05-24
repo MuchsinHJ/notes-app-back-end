@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "start:prod": "NODE_ENV=production node ./src/server.js",
+    "migrate": "node-pg-migrate",
     "start:dev": "nodemon ./src/server.js",
     "dev": "nodemon src/server.js",
     "lint": "eslint ./"
@@ -23,8 +24,11 @@
   },
   "dependencies": {
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "joi": "^18.1.2",
-    "nanoid": "^5.1.7"
+    "nanoid": "^5.1.7",
+    "node-pg-migrate": "^8.0.4",
+    "pg": "^8.21.0"
   }
 }
