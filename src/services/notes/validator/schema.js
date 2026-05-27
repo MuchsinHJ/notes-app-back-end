@@ -8,3 +8,9 @@ export const notePayloadSchema = Joi.object({
 export const noteQuerySchema = Joi.object({
   title: Joi.string().empty(),
 });
+
+export const noteUpdatePayloadSchema = Joi.object({
+  title: Joi.string().max(50),
+  body: Joi.string(),
+  tags: Joi.array().items(Joi.string()),
+});

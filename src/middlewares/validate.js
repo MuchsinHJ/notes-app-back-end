@@ -1,8 +1,8 @@
 const validate = (schema) => (req, res, next) => {
   const { error, value } = schema.validate(req.body, {
-    abortEarly: false,
-    allowUnknown: true,
-    stripUnknown: true,
+    abortEarly: false, //memvalidasi keseluruhan error (false)
+    allowUnknown: true, //memungkinkan field yang tidak ada di schema dijalankan (true)
+    stripUnknown: true, //menghapus field yang tidak ada di schema (true)
   });
 
   if (error) {
@@ -14,10 +14,11 @@ const validate = (schema) => (req, res, next) => {
   next();
 };
 
-const validateQuery = (schema) => (req, res, next) => {  const { error, value } = schema.validate(req.query, {
+const validateQuery = (schema) => (req, res, next) => {
+  const { error, value } = schema.validate(req.query, {
     abortEarly: false,
     allowUnknown: false,
-    stripUnknown: true
+    stripUnknown: true,
   });
   if (error) return next(error);
   req.validated = value;
