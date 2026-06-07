@@ -2,11 +2,13 @@
 import { Pool } from "pg";
 import { nanoid } from "nanoid";
 import collaborationRepositories from "../../collaborations/repositories/collaboration-repositories.js";
+import CacheService from "../../../cache/redis-service.js";
 
 class NoteRepositories {
   constructor() {
     this.pool = new Pool();
     this.collaborationRepositories = collaborationRepositories;
+    this.cacheService = new CacheService();
   }
 
   async createNote({ title, body, tags, owner }) {
@@ -15,25 +17,41 @@ class NoteRepositories {
     const updatedAt = createdAt;
 
     const query = {
-      text: "INSERT INTO notes(id, title, body, tags, created_at, updated_at, owner) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id, title, body, tags, created_at, updated_at, owner",
+      text: "INSERT INTO notes(id, title, body, tags, created_at, updated_at, owner) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id, title, body, tags, created_at, updated_at",
       values: [id, title, body, tags, createdAt, updatedAt, owner],
     };
 
     const result = await this.pool.query(query);
 
+    await this.cacheService.delete(`notes:${owner}`);
+
     return result.rows[0];
   }
 
   async getNotes(owner) {
-    const query = {
-      text: `SELECT notes.* FROM notes
-LEFT JOIN collaborations ON collaborations.note_id = notes.id
-WHERE notes.owner = $1 OR collaborations.user_id = $1
-GROUP BY notes.id`,
-      values: [owner],
-    };
-    const result = await this.pool.query(query);
-    return result.rows;
+    const cacheKey = `notes:${owner}`;
+
+    try {
+      const notes = await this.cacheService.get(cacheKey);
+      return JSON.parse(notes);
+      // eslint-disable-next-line no-unused-vars
+    } catch (error) {
+      // Cache miss, get from database
+      const query = {
+        text: `SELECT notes.* FROM notes
+       LEFT JOIN collaborations ON collaborations.note_id = notes.id
+       WHERE notes.owner = $1 OR collaborations.user_id = $1
+       GROUP BY notes.id`,
+        values: [owner],
+      };
+
+      const result = await this.pool.query(query);
+
+      // Save to cache
+      await this.cacheService.set(cacheKey, JSON.stringify(result.rows));
+
+      return result.rows;
+    }
   }
 
   async getNoteById(id) {
@@ -52,24 +70,34 @@ WHERE notes.id = $1`,
     const updatedAt = new Date().toISOString();
 
     const query = {
-      text: "UPDATE notes SET title = $1, body = $2, tags = $3, updated_at = $4 WHERE id = $5 RETURNING id, title, body, tags, created_at, updated_at",
+      text: "UPDATE notes SET title = $1, body = $2, tags = $3, updated_at = $4 WHERE id = $5 RETURNING id, title, body, tags, created_at, updated_at, owner",
       values: [title, body, tags, updatedAt, id],
     };
 
     const result = await this.pool.query(query);
+
+    if (result.rows[0]) {
+      const owner = result.rows[0].owner;
+      await this.cacheService.delete(`notes:${owner}`);
+    }
 
     return result.rows[0];
   }
 
   async deleteNote(id) {
     const query = {
-      text: "DELETE FROM notes WHERE id = $1 RETURNING id",
+      text: "DELETE FROM notes WHERE id = $1 RETURNING id, owner",
       values: [id],
     };
 
     const result = await this.pool.query(query);
 
-    return result.rows[0].id;
+    if (result.rows[0]) {
+      const owner = result.rows[0].owner;
+      await this.cacheService.delete(`notes:${owner}`);
+    }
+
+    return result.rows[0]?.id;
   }
 
   async verifyNoteOwner(id, owner) {
